@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_NAME="${0##*/}"
+
+#######################################
+# Default configuration (can be overridden by config files)
+#######################################
+
+RY_DOCKER_BIN="docker"                     # or "podman"
+RY_IMAGE="debian:12-slim"                  # default image (override in config)
+RY_HOST_CONFIG_DIR="$HOME/.config/opencode"
+RY_CONTAINER_CONFIG_DIR="/root/.config/opencode"
+RY_WORKDIR="/work"
+
+# Which user to run as inside the container:
+# - empty (default): run as current host uid:gid (non-root on typical systems)
+# - "root": run as root inside the container
+# - "opencode": run as the "opencode" user from the Dockerfile
+# - "UID:GID": explicit numeric mapping
+RY_DOCKER_USER=""
+
+# Env vars passed into the container as KEY=VALUE
+RY_ENV_VARS=()
+
+# Additional volumes, e.g. "/data/shared:/data:ro"
+RY_ADDITIONAL_VOLUMES=()
+
+# Extra args for "docker run", e.g. "--network=host"
+RY_DOCKER_RUN_EXTRA_ARGS=()
+
+# Dockerfile and build context for `roninyolo build`
+RY_DOCKERFILE=""
+RY_BUILD_CONTEXT="."
+
+# Default command to run in the container when no args are passed
+RY_DEFAULT_CMD=(opencode)
+
+#######################################
+# Config loading
+#######################################
+
+load_config_file() {
+  local file="$1"
+  if [[ -r "$file" ]]; then
+    # shellcheck source=/dev/null
+    . "$file"
+  fi
+}
+
+load_config() {
+  # Order: system-wide -> per-user -> per-project
+  load_config_file "/etc/roninyolo.conf"
+  load_config_file "$HOME/.config/roninyolo.conf"
+  load_config_file "$PWD/.roninyolo.conf"
+}
+
+#######################################
+# Usage
+#######################################
+
+usage() {
+  cat <<EOF
+${SCRIPT_NAME} - run opencode inside a container with mounted config & working directory
+
+Usage:
+  ${SCRIPT_NAME} [run] [CMD ...]   Run container; default CMD is configured RY_DEFAULT_CMD (default: opencode)
+  ${SCRIPT_NAME} build             Build the configured image from RY_DOCKERFILE
+  ${SCRIPT_NAME} help              Show this help
+
+Configuration files (optional, loaded in this order):
+  /etc/roninyolo.conf
+  \$HOME/.config/roninyolo.conf
+  \$PWD/.roninyolo.conf
+
+All configuration is done via these files (no environment-variable based config).
+EOF
+}
+
+#######################################
+# Build image
+#######################################
+
+do_build() {
+  if [[ -z "${RY_DOCKERFILE:-}" ]]; then
+    echo "ERROR: RY_DOCKERFILE is not set in any config file; cannot build." >&2
+    exit 1
+  fi
+
+  echo "Building image '${RY_IMAGE}' from Dockerfile '${RY_DOCKERFILE}' (context: '${RY_BUILD_CONTEXT}')..."
+  exec "${RY_DOCKER_BIN}" build -f "${RY_DOCKERFILE}" -t "${RY_IMAGE}" "${RY_BUILD_CONTEXT}"
+}
+
+#######################################
+# Run container
+#######################################
+
+do_run() {
+  local cmd=()
+  if (( $# > 0 )); then
+    # If user provides a command, use that
+    cmd=("$@")
+  else
+    # Otherwise use default command
+    cmd=("${RY_DEFAULT_CMD[@]}")
+  fi
+
+  local args=()
+  args+=(--rm -it)
+
+  # Run as configured user; default is current host uid:gid (non-root on typical systems)
+  if [[ -n "${RY_DOCKER_USER:-}" ]]; then
+    # Use the explicit user from config: can be "root", "opencode" or "UID:GID"
+    args+=(-u "${RY_DOCKER_USER}")
+  else
+    # Default: run as current host user so files in $PWD are owned by you
+    args+=(-u "$(id -u):$(id -g)")
+  fi
+
+  # Mount opencode config read-only
+  args+=(-v "${RY_HOST_CONFIG_DIR}:${RY_CONTAINER_CONFIG_DIR}:ro")
+
+  # Mount current directory as workdir (read-write)
+  args+=(-v "$PWD:${RY_WORKDIR}")
+  args+=(-w "${RY_WORKDIR}")
+
+  # Env vars into container
+  local envvar
+  for envvar in "${RY_ENV_VARS[@]}"; do
+    args+=(-e "$envvar")
+  done
+
+  # Additional volumes
+  local vol
+  for vol in "${RY_ADDITIONAL_VOLUMES[@]}"; do
+    args+=(-v "$vol")
+  done
+
+  # Extra docker run args
+  args+=("${RY_DOCKER_RUN_EXTRA_ARGS[@]}")
+
+  # Run container; when CMD exits (e.g. opencode), container exits
+  exec "${RY_DOCKER_BIN}" run "${args[@]}" "${RY_IMAGE}" "${cmd[@]}"
+}
+
+#######################################
+# Main
+#######################################
+
+main() {
+  load_config
+
+  local subcmd="run"
+
+  if (( $# > 0 )); then
+    case "$1" in
+      run)
+        subcmd="run"
+        shift
+        ;;
+      build)
+        subcmd="build"
+        shift
+        ;;
+      help|-h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        subcmd="run"
+        ;;
+    esac
+  fi
+
+  case "$subcmd" in
+    build) do_build "$@" ;;
+    run)   do_run "$@"   ;;
+  esac
+}
+
+main "$@"
