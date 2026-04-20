@@ -1,0 +1,35 @@
+# Build artifacts
+dist/
+build/
+*.o
+*.a
+*.so
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+
+# Dependencies
+node_modules/
+
+# Config overrides (keep template)
+*.local.conf
+
+# Deployment files
+TODO.md
