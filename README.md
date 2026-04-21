@@ -75,11 +75,11 @@ roninyolo help              Show help
 
 Config is read from plain Bash files, loaded in this order (later files override earlier ones):
 
-| File | Scope |
-|------|-------|
-| `/etc/roninyolo.conf` | system-wide |
-| `$HOME/.config/roninyolo.conf` | per-user |
-| `$PWD/.roninyolo.conf` | per-project |
+| File                           | Scope       |
+| ------------------------------ | ----------- |
+| `/etc/roninyolo.conf`          | system-wide |
+| `$HOME/.config/roninyolo.conf` | per-user    |
+| `$PWD/.roninyolo.conf`         | per-project |
 
 See [`docs/configuration.md`](docs/configuration.md) for a full reference of all variables.
 
