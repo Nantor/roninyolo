@@ -2,6 +2,7 @@
 set -euo pipefail
 
 SCRIPT_NAME="${0##*/}"
+RY_VERSION="0.1.0"
 
 #######################################
 # Default configuration (can be overridden by config files)
@@ -66,6 +67,7 @@ ${SCRIPT_NAME} - run opencode inside a container with mounted config & working d
 Usage:
   ${SCRIPT_NAME} [run] [CMD ...]   Run container; default CMD is configured RY_DEFAULT_CMD (default: opencode)
   ${SCRIPT_NAME} build             Build the configured image from RY_DOCKERFILE
+  ${SCRIPT_NAME} version           Print version and exit
   ${SCRIPT_NAME} help              Show this help
 
 Configuration files (optional, loaded in this order):
@@ -75,6 +77,14 @@ Configuration files (optional, loaded in this order):
 
 All configuration is done via these files (no environment-variable based config).
 EOF
+}
+
+#######################################
+# Version
+#######################################
+
+do_version() {
+  echo "${SCRIPT_NAME} ${RY_VERSION}"
 }
 
 #######################################
@@ -161,6 +171,10 @@ main() {
       build)
         subcmd="build"
         shift
+        ;;
+      version|--version|-V)
+        do_version
+        exit 0
         ;;
       help|-h|--help)
         usage
