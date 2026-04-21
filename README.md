@@ -65,7 +65,7 @@ docker run --rm -it \
 
 ## Commands
 
-```
+```bash
 roninyolo [run] [CMD ...]   Run the container (default CMD: opencode)
 roninyolo build             Build the image from RY_DOCKERFILE
 roninyolo help              Show help
