@@ -4,6 +4,25 @@
 
 `roninyolo` is a Bash CLI tool that wraps opencode (or other CLI tools) in a container with mounted config and working directory. Main script: `bin/roninyolo`.
 
+## Language & Portability
+
+**Bash is the intentional, permanent choice for this project.**
+
+- This is a ~200-line glue script that wraps `docker`/`podman` calls. Every platform capable of running Docker/Podman (Linux, macOS, BSD, Windows WSL2) has Bash available.
+- **Do not propose rewrites to other languages** (Python, Go, Rust, PowerShell, etc.). Such rewrites add build/install steps and runtime dependencies while providing zero new platform coverage.
+- The real portability ceiling is the container runtime, not the shell language. Changing languages does not solve iOS, Termux, or native Windows PowerShell limitations.
+
+**Bash 3.2 compatibility is required.**
+
+macOS ships Bash 3.2 by default. Code must not rely on Bash 4+ features:
+
+- No `${var,,}` / `${var^^}` (case conversion) — use `tr` instead
+- No `mapfile` / `readarray` — use while loops
+- No associative arrays (`declare -A`)
+- No `&>` redirection — use `>file 2>&1`
+
+Use `shellcheck` and test on macOS CI to catch violations.
+
 ## Key Commands
 
 ```bash
