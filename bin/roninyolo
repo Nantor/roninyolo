@@ -121,6 +121,7 @@ Usage:
   ${SCRIPT_NAME} [run] [CMD ...]   Run container; default CMD comes from the active profile
   ${SCRIPT_NAME} build             Build the configured image from RY_DOCKERFILE
   ${SCRIPT_NAME} init [DIR]        Scaffold a .roninyolo.conf in DIR (default: current directory)
+  ${SCRIPT_NAME} profiles          List available agent profiles
   ${SCRIPT_NAME} version           Print version and exit
   ${SCRIPT_NAME} help              Show this help
 
@@ -143,6 +144,44 @@ EOF
 
 do_version() {
   echo "${SCRIPT_NAME} ${RY_VERSION}"
+}
+
+#######################################
+# Profiles — list available profiles
+#######################################
+
+do_profiles() {
+  local search_dirs=(
+    "${SCRIPT_DIR}/../profiles"
+    "/etc/roninyolo/profiles"
+    "$HOME/.config/roninyolo/profiles"
+  )
+
+  # Collect unique profile names (basename without .sh)
+  local seen=" "
+  local name
+  local dir
+  local f
+
+  for dir in "${search_dirs[@]}"; do
+    if [[ -d "$dir" ]]; then
+      for f in "$dir"/*.sh; do
+        [[ -f "$f" ]] || continue
+        name="${f##*/}"
+        name="${name%.sh}"
+        # Skip if already seen (dedup across search paths)
+        case "$seen" in
+          *" ${name} "*) continue ;;
+        esac
+        seen="${seen}${name} "
+        if [[ "$name" = "${RY_AGENT_PROFILE:-opencode}" ]]; then
+          echo "${name} (active)"
+        else
+          echo "$name"
+        fi
+      done
+    fi
+  done
 }
 
 #######################################
@@ -308,6 +347,10 @@ main() {
         subcmd="init"
         shift
         ;;
+      profiles)
+        subcmd="profiles"
+        shift
+        ;;
       version|--version|-V)
         do_version
         exit 0
@@ -323,9 +366,10 @@ main() {
   fi
 
   case "$subcmd" in
-    build) do_build "$@" ;;
-    init)  do_init "$@"  ;;
-    run)   do_run "$@"   ;;
+    build)    do_build "$@"    ;;
+    init)     do_init "$@"     ;;
+    profiles) do_profiles "$@" ;;
+    run)      do_run "$@"      ;;
   esac
 }
 

@@ -149,3 +149,58 @@ teardown() {
     [ "$status" -eq 0 ]
     [ "$output" = "my-aider:latest" ]
 }
+
+# ── profiles subcommand ───────────────────────────────────
+
+@test "profiles subcommand exits successfully" {
+    run ./bin/roninyolo profiles
+    [ "$status" -eq 0 ]
+}
+
+@test "profiles subcommand lists opencode" {
+    run ./bin/roninyolo profiles
+    [[ "$output" == *"opencode"* ]]
+}
+
+@test "profiles subcommand lists aider" {
+    run ./bin/roninyolo profiles
+    [[ "$output" == *"aider"* ]]
+}
+
+@test "profiles subcommand marks default profile as active" {
+    run ./bin/roninyolo profiles
+    [[ "$output" == *"opencode (active)"* ]]
+}
+
+@test "profiles subcommand marks selected profile as active" {
+    mkdir -p "$TEST_TMPDIR/proj"
+    echo 'RY_AGENT_PROFILE="aider"' > "$TEST_TMPDIR/proj/.roninyolo.conf"
+
+    cd "$TEST_TMPDIR/proj"
+    run "$BATS_TEST_DIRNAME/../bin/roninyolo" profiles
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"aider (active)"* ]]
+}
+
+@test "profiles subcommand does not mark non-active profile as active" {
+    run ./bin/roninyolo profiles
+    # aider should NOT be marked active when opencode is the default
+    [[ "$output" != *"aider (active)"* ]]
+}
+
+@test "profiles subcommand discovers user-installed profiles" {
+    # Install a custom profile in the user config dir
+    local user_profile_dir="$TEST_TMPDIR/fake_home/.config/roninyolo/profiles"
+    mkdir -p "$user_profile_dir"
+    echo '# custom profile' > "$user_profile_dir/myagent.sh"
+
+    # Override HOME so the script finds our fake profile dir
+    HOME="$TEST_TMPDIR/fake_home" run ./bin/roninyolo profiles
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"myagent"* ]]
+}
+
+@test "profiles subcommand is documented in help" {
+    run ./bin/roninyolo help
+    [[ "$output" == *"profiles"* ]]
+}
