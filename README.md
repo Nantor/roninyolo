@@ -1,5 +1,9 @@
 # roninyolo
 
+![A stylized logo shows a ninja-like figure in mid-jump between two rocky cliffs, moving from left to right with a strong sense of motion and determination. The figure wears loose clothing and a wide hat, with their face mostly hidden except for bright eyes, giving a focused and mysterious feel. On the left cliff, there’s a small glowing box marked “AI,” with abstract symbols rising from it, suggesting ideas or digital activity. On the right cliff, a wooden sign reads “YOLO,” marking the destination. In the background, a large low sun sits behind distant mountains and a traditional gate shape, adding depth to the scene, while a few birds fly overhead. At the bottom, the name “RONIN YOLO” appears in large, rough, hand-painted-style lettering, reinforcing a bold, playful theme of taking a leap from AI into action.](assets/logo.png)
+
+> *Note: The image is AI-generated with DALL·E.*
+
 A Bash CLI wrapper that runs [opencode](https://opencode.ai) (or any interactive CLI tool) inside a container, with your host config and working directory mounted automatically.
 
 ## What it does
