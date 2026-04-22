@@ -67,6 +67,7 @@ ${SCRIPT_NAME} - run opencode inside a container with mounted config & working d
 Usage:
   ${SCRIPT_NAME} [run] [CMD ...]   Run container; default CMD is configured RY_DEFAULT_CMD (default: opencode)
   ${SCRIPT_NAME} build             Build the configured image from RY_DOCKERFILE
+  ${SCRIPT_NAME} init [DIR]        Scaffold a .roninyolo.conf in DIR (default: current directory)
   ${SCRIPT_NAME} version           Print version and exit
   ${SCRIPT_NAME} help              Show this help
 
@@ -85,6 +86,77 @@ EOF
 
 do_version() {
   echo "${SCRIPT_NAME} ${RY_VERSION}"
+}
+
+#######################################
+# Init — scaffold a .roninyolo.conf
+#######################################
+
+do_init() {
+  local target_dir="${1:-.}"
+  local conf_file="${target_dir}/.roninyolo.conf"
+
+  if [[ -f "$conf_file" ]]; then
+    echo "ERROR: ${conf_file} already exists; refusing to overwrite." >&2
+    exit 1
+  fi
+
+  mkdir -p "$target_dir"
+
+  cat > "$conf_file" <<'TMPL'
+# roninyolo project configuration
+# See docs/configuration.md for the full reference.
+#
+# Variables defined here override per-user and system-wide configs.
+# Uncomment and edit the lines you need.
+
+# Container runtime: "docker" or "podman"
+# RY_DOCKER_BIN="docker"
+
+# Image to run
+# RY_IMAGE="debian:12-slim"
+
+# Host path to config directory (mounted read-only into the container)
+# RY_HOST_CONFIG_DIR="$HOME/.config/opencode"
+
+# Where the host config appears inside the container
+# RY_CONTAINER_CONFIG_DIR="/root/.config/opencode"
+
+# Working directory inside the container
+# RY_WORKDIR="/work"
+
+# User inside the container (empty = current UID:GID)
+#   "root"       — run as root
+#   "opencode"   — run as the opencode user from the Dockerfile
+#   "UID:GID"    — explicit numeric mapping
+# RY_DOCKER_USER=""
+
+# Environment variables passed into the container (KEY=VALUE)
+# RY_ENV_VARS=(
+#   "EDITOR=vim"
+# )
+
+# Additional volume mounts
+# RY_ADDITIONAL_VOLUMES=(
+#   "$PWD/.cache:/work/.cache"
+# )
+
+# Extra arguments for "docker run"
+# RY_DOCKER_RUN_EXTRA_ARGS=(
+#   "--network=host"
+# )
+
+# Dockerfile path for `roninyolo build`
+# RY_DOCKERFILE=""
+
+# Build context directory
+# RY_BUILD_CONTEXT="."
+
+# Default command when no arguments are given
+# RY_DEFAULT_CMD=(opencode)
+TMPL
+
+  echo "Created ${conf_file}"
 }
 
 #######################################
@@ -172,6 +244,10 @@ main() {
         subcmd="build"
         shift
         ;;
+      init)
+        subcmd="init"
+        shift
+        ;;
       version|--version|-V)
         do_version
         exit 0
@@ -188,6 +264,7 @@ main() {
 
   case "$subcmd" in
     build) do_build "$@" ;;
+    init)  do_init "$@"  ;;
     run)   do_run "$@"   ;;
   esac
 }
