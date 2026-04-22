@@ -97,3 +97,55 @@ teardown() {
     [ "$status" -eq 0 ]
     [ "$output" = "custom-image:latest" ]
 }
+
+# ── aider profile ──────────────────────────────────────────
+
+@test "bundled aider profile exists" {
+    [ -f profiles/aider.sh ]
+}
+
+@test "aider profile sets RY_IMAGE with conditional assignment" {
+    run grep 'RY_IMAGE=.*{RY_IMAGE:-' profiles/aider.sh
+    [ "$status" -eq 0 ]
+}
+
+@test "aider profile sets RY_HOST_CONFIG_DIR with conditional assignment" {
+    run grep 'RY_HOST_CONFIG_DIR=.*{RY_HOST_CONFIG_DIR:-' profiles/aider.sh
+    [ "$status" -eq 0 ]
+}
+
+@test "aider profile sets RY_CONTAINER_CONFIG_DIR with conditional assignment" {
+    run grep 'RY_CONTAINER_CONFIG_DIR=.*{RY_CONTAINER_CONFIG_DIR:-' profiles/aider.sh
+    [ "$status" -eq 0 ]
+}
+
+@test "aider profile sets RY_DEFAULT_CMD conditionally" {
+    run grep 'RY_DEFAULT_CMD' profiles/aider.sh
+    [ "$status" -eq 0 ]
+}
+
+@test "aider profile listed in help output" {
+    run ./bin/roninyolo help
+    [[ "$output" == *"aider"* ]]
+}
+
+@test "user config overrides aider profile defaults for RY_IMAGE" {
+    mkdir -p "$TEST_TMPDIR/proj"
+    echo 'RY_IMAGE="my-aider:latest"' > "$TEST_TMPDIR/proj/.roninyolo.conf"
+
+    cd "$TEST_TMPDIR/proj"
+    run bash -c '
+        RY_IMAGE=""
+        RY_HOST_CONFIG_DIR=""
+        RY_CONTAINER_CONFIG_DIR=""
+        RY_DEFAULT_CMD=()
+        RY_AGENT_PROFILE="aider"
+
+        . "'"$TEST_TMPDIR/proj/.roninyolo.conf"'"
+        . "'"$BATS_TEST_DIRNAME/../profiles/aider.sh"'"
+
+        echo "$RY_IMAGE"
+    '
+    [ "$status" -eq 0 ]
+    [ "$output" = "my-aider:latest" ]
+}

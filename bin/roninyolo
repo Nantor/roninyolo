@@ -126,7 +126,7 @@ Usage:
 
 Agent profiles:
   Set RY_AGENT_PROFILE in a config file to select which agent to run.
-  Built-in profiles: opencode (default).
+  Built-in profiles: opencode (default), aider.
 
 Configuration files (optional, loaded in this order):
   /etc/roninyolo.conf
@@ -167,7 +167,7 @@ do_init() {
 # Variables defined here override per-user and system-wide configs.
 # Uncomment and edit the lines you need.
 
-# Agent profile (built-in: opencode)
+# Agent profile (built-in: opencode, aider)
 # RY_AGENT_PROFILE="opencode"
 
 # Container runtime: "docker" or "podman"
