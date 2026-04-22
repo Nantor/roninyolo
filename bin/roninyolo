@@ -6,12 +6,13 @@ RY_VERSION="0.1.0"
 
 #######################################
 # Default configuration (can be overridden by config files)
+#
+# Only runtime-agnostic defaults live here.  Agent-specific
+# values (image, config dirs, default command) are set by the
+# profile — see profiles/*.sh.
 #######################################
 
 RY_DOCKER_BIN="docker"                     # or "podman"
-RY_IMAGE="debian:12-slim"                  # default image (override in config)
-RY_HOST_CONFIG_DIR="$HOME/.config/opencode"
-RY_CONTAINER_CONFIG_DIR="/root/.config/opencode"
 RY_WORKDIR="/work"
 
 # Which user to run as inside the container:
@@ -34,12 +35,31 @@ RY_DOCKER_RUN_EXTRA_ARGS=()
 RY_DOCKERFILE=""
 RY_BUILD_CONTEXT="."
 
-# Default command to run in the container when no args are passed
-RY_DEFAULT_CMD=(opencode)
+# Default command (may be set by profile if not overridden in config)
+RY_DEFAULT_CMD=()
+
+# Agent profile to load (set in config files; default: opencode)
+RY_AGENT_PROFILE="opencode"
 
 #######################################
 # Config loading
 #######################################
+
+# Resolve the directory that contains this script (follows symlinks).
+# Used to locate bundled profiles/ next to bin/.
+_resolve_script_dir() {
+  local src="${BASH_SOURCE[0]}"
+  while [[ -L "$src" ]]; do
+    local dir
+    dir="$(cd -P "$(dirname "$src")" && pwd)"
+    src="$(readlink "$src")"
+    # If readlink returned a relative path, resolve it from dir.
+    [[ "$src" != /* ]] && src="$dir/$src"
+  done
+  cd -P "$(dirname "$src")" && pwd
+}
+
+SCRIPT_DIR="$(_resolve_script_dir)"
 
 load_config_file() {
   local file="$1"
@@ -49,11 +69,44 @@ load_config_file() {
   fi
 }
 
+# Load an agent profile by name.
+# Search paths (first match wins):
+#   1. Bundled — <script_dir>/../profiles/<name>.sh
+#   2. System — /etc/roninyolo/profiles/<name>.sh
+#   3. User   — $HOME/.config/roninyolo/profiles/<name>.sh
+load_profile() {
+  local name="${RY_AGENT_PROFILE:-opencode}"
+  local search_paths=(
+    "${SCRIPT_DIR}/../profiles/${name}.sh"
+    "/etc/roninyolo/profiles/${name}.sh"
+    "$HOME/.config/roninyolo/profiles/${name}.sh"
+  )
+
+  local p
+  for p in "${search_paths[@]}"; do
+    if [[ -r "$p" ]]; then
+      # shellcheck source=/dev/null
+      . "$p"
+      return 0
+    fi
+  done
+
+  echo "ERROR: profile '${name}' not found. Searched:" >&2
+  for p in "${search_paths[@]}"; do
+    echo "  $p" >&2
+  done
+  exit 1
+}
+
 load_config() {
-  # Order: system-wide -> per-user -> per-project
+  # 1. Source config files (may set RY_AGENT_PROFILE and override defaults)
   load_config_file "/etc/roninyolo.conf"
   load_config_file "$HOME/.config/roninyolo.conf"
   load_config_file "$PWD/.roninyolo.conf"
+
+  # 2. Load the selected profile; profile uses conditional assignment
+  #    so any value already set by the user's config wins.
+  load_profile
 }
 
 #######################################
@@ -62,14 +115,18 @@ load_config() {
 
 usage() {
   cat <<EOF
-${SCRIPT_NAME} - run opencode inside a container with mounted config & working directory
+${SCRIPT_NAME} - run CLI agents inside a container with mounted config & working directory
 
 Usage:
-  ${SCRIPT_NAME} [run] [CMD ...]   Run container; default CMD is configured RY_DEFAULT_CMD (default: opencode)
+  ${SCRIPT_NAME} [run] [CMD ...]   Run container; default CMD comes from the active profile
   ${SCRIPT_NAME} build             Build the configured image from RY_DOCKERFILE
   ${SCRIPT_NAME} init [DIR]        Scaffold a .roninyolo.conf in DIR (default: current directory)
   ${SCRIPT_NAME} version           Print version and exit
   ${SCRIPT_NAME} help              Show this help
+
+Agent profiles:
+  Set RY_AGENT_PROFILE in a config file to select which agent to run.
+  Built-in profiles: opencode (default).
 
 Configuration files (optional, loaded in this order):
   /etc/roninyolo.conf
@@ -110,10 +167,13 @@ do_init() {
 # Variables defined here override per-user and system-wide configs.
 # Uncomment and edit the lines you need.
 
+# Agent profile (built-in: opencode)
+# RY_AGENT_PROFILE="opencode"
+
 # Container runtime: "docker" or "podman"
 # RY_DOCKER_BIN="docker"
 
-# Image to run
+# Image to run (default set by profile)
 # RY_IMAGE="debian:12-slim"
 
 # Host path to config directory (mounted read-only into the container)
