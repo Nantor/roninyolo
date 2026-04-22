@@ -10,13 +10,13 @@ setup() {
 @test "roninyolo displays help" {
     run ./bin/roninyolo --help
     [ "$status" -eq 0 ]
-    [ "$output" = *"roninyolo"* ]
+    [[ "$output" == *"roninyolo"* ]]
 }
 
 @test "roninyolo displays version" {
     run ./bin/roninyolo --version
     [ "$status" -eq 0 ]
-    [ "$output" = *"roninyolo"* ]
+    [[ "$output" == *"roninyolo"* ]]
 }
 
 @test "roninyolo init creates project" {
