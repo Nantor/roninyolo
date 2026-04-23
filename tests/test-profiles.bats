@@ -25,6 +25,11 @@ teardown() {
 
 # ── load_profile uses conditional assignment ───────────────
 
+@test "opencode profile sets RY_BASE_IMAGE with conditional assignment" {
+    run grep 'RY_BASE_IMAGE=.*{RY_BASE_IMAGE:-' profiles/opencode.sh
+    [ "$status" -eq 0 ]
+}
+
 @test "opencode profile sets RY_IMAGE with conditional assignment" {
     # The profile should use ${RY_IMAGE:-...} so grep for the pattern
     run grep 'RY_IMAGE=.*{RY_IMAGE:-' profiles/opencode.sh
@@ -104,6 +109,11 @@ teardown() {
     [ -f profiles/aider.sh ]
 }
 
+@test "aider profile sets RY_BASE_IMAGE with conditional assignment" {
+    run grep 'RY_BASE_IMAGE=.*{RY_BASE_IMAGE:-' profiles/aider.sh
+    [ "$status" -eq 0 ]
+}
+
 @test "aider profile sets RY_IMAGE with conditional assignment" {
     run grep 'RY_IMAGE=.*{RY_IMAGE:-' profiles/aider.sh
     [ "$status" -eq 0 ]
@@ -154,6 +164,11 @@ teardown() {
 
 @test "bundled claude profile exists" {
     [ -f profiles/claude.sh ]
+}
+
+@test "claude profile sets RY_BASE_IMAGE with conditional assignment" {
+    run grep 'RY_BASE_IMAGE=.*{RY_BASE_IMAGE:-' profiles/claude.sh
+    [ "$status" -eq 0 ]
 }
 
 @test "claude profile sets RY_IMAGE with conditional assignment" {

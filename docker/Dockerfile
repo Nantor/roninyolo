@@ -1,4 +1,5 @@
-FROM debian:12-slim
+ARG BASE_IMAGE=debian:12-slim
+FROM ${BASE_IMAGE}
 
 # Basic dependencies for the installer + shell
 RUN apt-get update && \

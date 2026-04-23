@@ -38,16 +38,34 @@ RY_DOCKER_BIN="podman"
 
 ### `RY_IMAGE`
 
-The container image to use when running or building.
+The container image to **run** (passed to `docker run`) and to **tag** when building (passed to `docker build -t`). Set this to the name you want the locally built image to carry, or to an existing upstream image when no build step is needed.
 
 | | |
 |---|---|
-| **Default** | `debian:12-slim` |
+| **Default** | `roninyolo/opencode:local` (opencode profile) |
 | **Values** | Any valid image reference (e.g. `myorg/myimage:latest`) |
 
 **Example:**
 ```bash
 RY_IMAGE="ghcr.io/myorg/opencode:latest"
+```
+
+---
+
+### `RY_BASE_IMAGE`
+
+The **base image** passed to the Dockerfile as `--build-arg BASE_IMAGE` when running `roninyolo build`. This is the image the `FROM` line in the Dockerfile builds on top of. It has no effect when only running containers (i.e. it is not used by `docker run`).
+
+| | |
+|---|---|
+| **Default** | `debian:12-slim` (opencode profile) |
+| **Values** | Any valid image reference |
+
+**Example:**
+```bash
+# Build your opencode image on top of Ubuntu instead of Debian
+RY_BASE_IMAGE="ubuntu:24.04"
+RY_IMAGE="myorg/opencode:ubuntu"
 ```
 
 ---
@@ -186,7 +204,7 @@ RY_DOCKER_RUN_EXTRA_ARGS=(
 
 ### `RY_DOCKERFILE`
 
-Path to the Dockerfile used by `roninyolo build`. Must be set before running the `build` subcommand.
+Path to the Dockerfile used by `roninyolo build`. Must be set before running the `build` subcommand. The Dockerfile should declare `ARG BASE_IMAGE` so that `RY_BASE_IMAGE` is honoured.
 
 | | |
 |---|---|
@@ -245,7 +263,12 @@ RY_DEFAULT_CMD=(bash)
 # $PWD/.roninyolo.conf — project-local overrides
 
 RY_DOCKER_BIN="podman"
+
+# Image to run (and the tag applied when building)
 RY_IMAGE="ghcr.io/myorg/opencode:latest"
+
+# Base image the Dockerfile builds on top of (used by `roninyolo build`)
+RY_BASE_IMAGE="debian:12-slim"
 
 RY_HOST_CONFIG_DIR="$HOME/.config/opencode"
 RY_CONTAINER_CONFIG_DIR="/home/opencode/.config/opencode"

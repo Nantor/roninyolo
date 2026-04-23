@@ -35,6 +35,11 @@ RY_DOCKER_RUN_EXTRA_ARGS=()
 RY_DOCKERFILE=""
 RY_BUILD_CONTEXT="."
 
+# Base image passed to Dockerfile as ARG BASE_IMAGE (used in FROM).
+# RY_IMAGE is the tag applied to the built image; RY_BASE_IMAGE is what
+# the Dockerfile builds on top of.  Both default to the profile's value.
+RY_BASE_IMAGE=""
+
 # Default command (may be set by profile if not overridden in config)
 RY_DEFAULT_CMD=()
 
@@ -212,8 +217,11 @@ do_init() {
 # Container runtime: "docker" or "podman"
 # RY_DOCKER_BIN="docker"
 
-# Image to run (default set by profile)
-# RY_IMAGE="debian:12-slim"
+# Image to run (tag applied to `docker run` and `docker build -t`; default set by profile)
+# RY_IMAGE="roninyolo/opencode:local"
+
+# Base image the Dockerfile builds FROM (passed as --build-arg BASE_IMAGE)
+# RY_BASE_IMAGE="debian:12-slim"
 
 # Host path to config directory (mounted read-only into the container)
 # RY_HOST_CONFIG_DIR="$HOME/.config/opencode"
@@ -268,8 +276,16 @@ do_build() {
     exit 1
   fi
 
-  echo "Building image '${RY_IMAGE}' from Dockerfile '${RY_DOCKERFILE}' (context: '${RY_BUILD_CONTEXT}')..."
-  exec "${RY_DOCKER_BIN}" build -f "${RY_DOCKERFILE}" -t "${RY_IMAGE}" "${RY_BUILD_CONTEXT}"
+  # RY_BASE_IMAGE is the base image for the Dockerfile's FROM (passed via
+  # --build-arg BASE_IMAGE).  Fall back to RY_IMAGE if not explicitly set.
+  local base_image="${RY_BASE_IMAGE:-${RY_IMAGE}}"
+
+  echo "Building image '${RY_IMAGE}' (base: '${base_image}') from Dockerfile '${RY_DOCKERFILE}' (context: '${RY_BUILD_CONTEXT}')..."
+  exec "${RY_DOCKER_BIN}" build \
+    -f "${RY_DOCKERFILE}" \
+    -t "${RY_IMAGE}" \
+    --build-arg "BASE_IMAGE=${base_image}" \
+    "${RY_BUILD_CONTEXT}"
 }
 
 #######################################

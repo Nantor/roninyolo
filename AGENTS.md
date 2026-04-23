@@ -57,7 +57,8 @@ Config files loaded in precedence order (later overrides earlier):
 All config via shell variables (no env-based config at runtime). Key variables:
 
 - `RY_DOCKER_BIN` - "docker" or "podman"
-- `RY_IMAGE` - container image
+- `RY_IMAGE` - image tag used by `docker run` and `docker build -t`
+- `RY_BASE_IMAGE` - base image for the Dockerfile's `FROM` (passed as `--build-arg BASE_IMAGE` during `roninyolo build`)
 - `RY_HOST_CONFIG_DIR` - host config path
 - `RY_CONTAINER_CONFIG_DIR` - config path inside container
 - `RY_WORKDIR` - working directory inside container

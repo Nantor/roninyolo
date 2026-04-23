@@ -62,9 +62,12 @@ You have two options: pull a pre-built image or build one locally.
 ```bash
 cd ~/roninyolo   # or wherever you cloned the repo
 
-# Tell roninyolo where the Dockerfile is
+# Tell roninyolo where the Dockerfile is and which image names to use
 cat > ~/.config/roninyolo.conf <<'EOF'
 RY_DOCKERFILE="docker/Dockerfile"
+# RY_BASE_IMAGE is the base image the Dockerfile builds FROM
+RY_BASE_IMAGE="debian:12-slim"
+# RY_IMAGE is the tag applied to the built image (and used by docker run)
 RY_IMAGE="roninyolo/opencode:local"
 EOF
 
