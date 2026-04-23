@@ -150,6 +150,58 @@ teardown() {
     [ "$output" = "my-aider:latest" ]
 }
 
+# ── claude profile ─────────────────────────────────────────
+
+@test "bundled claude profile exists" {
+    [ -f profiles/claude.sh ]
+}
+
+@test "claude profile sets RY_IMAGE with conditional assignment" {
+    run grep 'RY_IMAGE=.*{RY_IMAGE:-' profiles/claude.sh
+    [ "$status" -eq 0 ]
+}
+
+@test "claude profile sets RY_HOST_CONFIG_DIR with conditional assignment" {
+    run grep 'RY_HOST_CONFIG_DIR=.*{RY_HOST_CONFIG_DIR:-' profiles/claude.sh
+    [ "$status" -eq 0 ]
+}
+
+@test "claude profile sets RY_CONTAINER_CONFIG_DIR with conditional assignment" {
+    run grep 'RY_CONTAINER_CONFIG_DIR=.*{RY_CONTAINER_CONFIG_DIR:-' profiles/claude.sh
+    [ "$status" -eq 0 ]
+}
+
+@test "claude profile sets RY_DEFAULT_CMD conditionally" {
+    run grep 'RY_DEFAULT_CMD' profiles/claude.sh
+    [ "$status" -eq 0 ]
+}
+
+@test "claude profile listed in help output" {
+    run ./bin/roninyolo help
+    [[ "$output" == *"claude"* ]]
+}
+
+@test "user config overrides claude profile defaults for RY_IMAGE" {
+    mkdir -p "$TEST_TMPDIR/proj"
+    echo 'RY_IMAGE="my-claude:latest"' > "$TEST_TMPDIR/proj/.roninyolo.conf"
+
+    cd "$TEST_TMPDIR/proj"
+    run bash -c '
+        RY_IMAGE=""
+        RY_HOST_CONFIG_DIR=""
+        RY_CONTAINER_CONFIG_DIR=""
+        RY_DEFAULT_CMD=()
+        RY_AGENT_PROFILE="claude"
+
+        . "'"$TEST_TMPDIR/proj/.roninyolo.conf"'"
+        . "'"$BATS_TEST_DIRNAME/../profiles/claude.sh"'"
+
+        echo "$RY_IMAGE"
+    '
+    [ "$status" -eq 0 ]
+    [ "$output" = "my-claude:latest" ]
+}
+
 # ── profiles subcommand ───────────────────────────────────
 
 @test "profiles subcommand exits successfully" {
@@ -165,6 +217,11 @@ teardown() {
 @test "profiles subcommand lists aider" {
     run ./bin/roninyolo profiles
     [[ "$output" == *"aider"* ]]
+}
+
+@test "profiles subcommand lists claude" {
+    run ./bin/roninyolo profiles
+    [[ "$output" == *"claude"* ]]
 }
 
 @test "profiles subcommand marks default profile as active" {
