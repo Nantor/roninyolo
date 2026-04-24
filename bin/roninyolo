@@ -9,7 +9,7 @@ RY_VERSION="0.1.0"
 #
 # Only runtime-agnostic defaults live here.  Agent-specific
 # values (image, config dirs, default command) are set by the
-# profile — see profiles/*.sh.
+# profile — see profiles/<name>/profile.sh.
 #######################################
 
 RY_DOCKER_BIN="docker"                     # or "podman"
@@ -31,20 +31,20 @@ RY_ADDITIONAL_VOLUMES=()
 # Extra args for "docker run", e.g. "--network=host"
 RY_DOCKER_RUN_EXTRA_ARGS=()
 
-# Dockerfile and build context for `roninyolo build`
+# Dockerfile and build context for `roninyolo build`.
+# Leave empty here; profiles that ship a Dockerfile set these via
+# conditional assignment.  do_build() falls back to "." for the context.
 RY_DOCKERFILE=""
-RY_BUILD_CONTEXT="."
-
-# Base image passed to Dockerfile as ARG BASE_IMAGE (used in FROM).
-# RY_IMAGE is the tag applied to the built image; RY_BASE_IMAGE is what
-# the Dockerfile builds on top of.  Both default to the profile's value.
-RY_BASE_IMAGE=""
+RY_BUILD_CONTEXT=""
 
 # Default command (may be set by profile if not overridden in config)
 RY_DEFAULT_CMD=()
 
 # Agent profile to load (set in config files; default: opencode)
 RY_AGENT_PROFILE="opencode"
+
+# Directory of the active profile (set by load_profile before sourcing profile.sh)
+RY_PROFILE_DIR=""
 
 #######################################
 # Config loading
@@ -75,21 +75,26 @@ load_config_file() {
 }
 
 # Load an agent profile by name.
+# Each profile lives in its own subdirectory as <name>/profile.sh.
 # Search paths (first match wins):
-#   1. Bundled — <script_dir>/../profiles/<name>.sh
-#   2. System — /etc/roninyolo/profiles/<name>.sh
-#   3. User   — $HOME/.config/roninyolo/profiles/<name>.sh
+#   1. Bundled — <script_dir>/../profiles/<name>/profile.sh
+#   2. System — /etc/roninyolo/profiles/<name>/profile.sh
+#   3. User   — $HOME/.config/roninyolo/profiles/<name>/profile.sh
+#
+# RY_PROFILE_DIR is set to the profile's directory before sourcing so that
+# profile scripts can reference sibling files (e.g. a co-located Dockerfile).
 load_profile() {
   local name="${RY_AGENT_PROFILE:-opencode}"
   local search_paths=(
-    "${SCRIPT_DIR}/../profiles/${name}.sh"
-    "/etc/roninyolo/profiles/${name}.sh"
-    "$HOME/.config/roninyolo/profiles/${name}.sh"
+    "${SCRIPT_DIR}/../profiles/${name}/profile.sh"
+    "/etc/roninyolo/profiles/${name}/profile.sh"
+    "$HOME/.config/roninyolo/profiles/${name}/profile.sh"
   )
 
   local p
   for p in "${search_paths[@]}"; do
     if [[ -r "$p" ]]; then
+      RY_PROFILE_DIR="$(cd "$(dirname "$p")" && pwd)"
       # shellcheck source=/dev/null
       . "$p"
       return 0
@@ -162,7 +167,7 @@ do_profiles() {
     "$HOME/.config/roninyolo/profiles"
   )
 
-  # Collect unique profile names (basename without .sh)
+  # Collect unique profile names (subdirectory name containing profile.sh)
   local seen=" "
   local name
   local dir
@@ -170,10 +175,11 @@ do_profiles() {
 
   for dir in "${search_dirs[@]}"; do
     if [[ -d "$dir" ]]; then
-      for f in "$dir"/*.sh; do
+      for f in "$dir"/*/profile.sh; do
         [[ -f "$f" ]] || continue
-        name="${f##*/}"
-        name="${name%.sh}"
+        # Extract the subdirectory name (the profile name)
+        name="${f%/profile.sh}"
+        name="${name##*/}"
         # Skip if already seen (dedup across search paths)
         case "$seen" in
           *" ${name} "*) continue ;;
@@ -219,9 +225,6 @@ do_init() {
 
 # Image to run (tag applied to `docker run` and `docker build -t`; default set by profile)
 # RY_IMAGE="roninyolo/opencode:local"
-
-# Base image the Dockerfile builds FROM (passed as --build-arg BASE_IMAGE)
-# RY_BASE_IMAGE="debian:12-slim"
 
 # Host path to config directory (mounted read-only into the container)
 # RY_HOST_CONFIG_DIR="$HOME/.config/opencode"
@@ -272,20 +275,32 @@ TMPL
 
 do_build() {
   if [[ -z "${RY_DOCKERFILE:-}" ]]; then
-    echo "ERROR: RY_DOCKERFILE is not set in any config file; cannot build." >&2
-    exit 1
+    # Check if RY_IMAGE is also unset
+    if [[ -z "${RY_IMAGE:-}" ]]; then
+      echo "INFO: Profile '${RY_AGENT_PROFILE}' is not configured with either:" >&2
+      echo "      - a Dockerfile (RY_DOCKERFILE)" >&2
+      echo "      - a registry image (RY_IMAGE)" >&2
+      echo "      Configure one of these in your profile to enable building." >&2
+      exit 1
+    else
+      echo "INFO: Profile '${RY_AGENT_PROFILE}' uses a registry image ('${RY_IMAGE}'); no local build is needed." >&2
+      echo "      Pull it with: ${RY_DOCKER_BIN} pull ${RY_IMAGE}" >&2
+      exit 0
+    fi
   fi
 
-  # RY_BASE_IMAGE is the base image for the Dockerfile's FROM (passed via
-  # --build-arg BASE_IMAGE).  Fall back to RY_IMAGE if not explicitly set.
-  local base_image="${RY_BASE_IMAGE:-${RY_IMAGE}}"
+  local build_context
+  if [[ -n "${RY_BUILD_CONTEXT:-}" ]]; then
+    build_context="$RY_BUILD_CONTEXT"
+  else
+    build_context="."
+  fi
 
-  echo "Building image '${RY_IMAGE}' (base: '${base_image}') from Dockerfile '${RY_DOCKERFILE}' (context: '${RY_BUILD_CONTEXT}')..."
+  echo "Building image '${RY_IMAGE}' from Dockerfile '${RY_DOCKERFILE}' (context: '${build_context}')..."
   exec "${RY_DOCKER_BIN}" build \
     -f "${RY_DOCKERFILE}" \
     -t "${RY_IMAGE}" \
-    --build-arg "BASE_IMAGE=${base_image}" \
-    "${RY_BUILD_CONTEXT}"
+    "${build_context}"
 }
 
 #######################################
