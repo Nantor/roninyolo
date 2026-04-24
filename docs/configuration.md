@@ -52,23 +52,7 @@ RY_IMAGE="ghcr.io/myorg/opencode:latest"
 
 ---
 
-### `RY_BASE_IMAGE`
 
-The **base image** passed to the Dockerfile as `--build-arg BASE_IMAGE` when running `roninyolo build`. This is the image the `FROM` line in the Dockerfile builds on top of. It has no effect when only running containers (i.e. it is not used by `docker run`).
-
-| | |
-|---|---|
-| **Default** | `debian:12-slim` (opencode profile) |
-| **Values** | Any valid image reference |
-
-**Example:**
-```bash
-# Build your opencode image on top of Ubuntu instead of Debian
-RY_BASE_IMAGE="ubuntu:24.04"
-RY_IMAGE="myorg/opencode:ubuntu"
-```
-
----
 
 ### `RY_HOST_CONFIG_DIR`
 
@@ -213,7 +197,9 @@ Path to the Dockerfile used by `roninyolo build`. Must be set before running the
 
 **Example:**
 ```bash
-RY_DOCKERFILE="docker/Dockerfile"
+# Override only if you want a custom Dockerfile instead of the profile's default.
+# Profiles that ship a Dockerfile (e.g. opencode) set this automatically.
+RY_DOCKERFILE="profiles/opencode/Dockerfile"
 ```
 
 ---
@@ -267,8 +253,7 @@ RY_DOCKER_BIN="podman"
 # Image to run (and the tag applied when building)
 RY_IMAGE="ghcr.io/myorg/opencode:latest"
 
-# Base image the Dockerfile builds on top of (used by `roninyolo build`)
-RY_BASE_IMAGE="debian:12-slim"
+
 
 RY_HOST_CONFIG_DIR="$HOME/.config/opencode"
 RY_CONTAINER_CONFIG_DIR="/home/opencode/.config/opencode"
@@ -288,8 +273,8 @@ RY_DOCKER_RUN_EXTRA_ARGS=(
   "--network=host"
 )
 
-RY_DOCKERFILE="docker/Dockerfile"
-RY_BUILD_CONTEXT="."
+RY_DOCKERFILE="profiles/opencode/Dockerfile"
+RY_BUILD_CONTEXT="profiles/opencode"
 
 RY_DEFAULT_CMD=(opencode)
 ```

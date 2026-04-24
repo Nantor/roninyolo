@@ -59,22 +59,27 @@ You have two options: pull a pre-built image or build one locally.
 
 ### Option A: Build the bundled Dockerfile
 
-```bash
-cd ~/roninyolo   # or wherever you cloned the repo
+The `opencode` profile ships with a co-located Dockerfile
+(`profiles/opencode/Dockerfile`) and wires it automatically.
+No manual path configuration is needed:
 
-# Tell roninyolo where the Dockerfile is and which image names to use
+```bash
+roninyolo build
+```
+
+This builds a `debian:12-slim`-based image with opencode installed,
+tagged as `roninyolo/opencode:local`.
+
+To override the output tag, set it in your config before building:
+
+```bash
 cat > ~/.config/roninyolo.conf <<'EOF'
-RY_DOCKERFILE="docker/Dockerfile"
-# RY_BASE_IMAGE is the base image the Dockerfile builds FROM
-RY_BASE_IMAGE="debian:12-slim"
 # RY_IMAGE is the tag applied to the built image (and used by docker run)
 RY_IMAGE="roninyolo/opencode:local"
 EOF
 
 roninyolo build
 ```
-
-This builds a `debian:12-slim`-based image with opencode installed, tagged as `roninyolo/opencode:local`.
 
 ### Option B: Use a pre-built image
 
